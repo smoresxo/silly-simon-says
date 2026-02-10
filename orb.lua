@@ -1,8 +1,8 @@
 --[[
-    ORB VACUUM (Brute Force)
-    - Select orb.
-    - Sucks everything into your HumanoidRootPart.
-    - No offsets, no lines, just straight to the middle.
+    OPTIMIZED ORB VACUUM
+    - No more FPS lag.
+    - Finds the folder automatically.
+    - Sucks orbs into your chest instantly.
 ]]
 
 local Players = game:GetService("Players")
@@ -13,22 +13,23 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
-if CoreGui:FindFirstChild("OrbVacuumUI") then CoreGui.OrbVacuumUI:Destroy() end
+if CoreGui:FindFirstChild("FastVacuumUI") then CoreGui.FastVacuumUI:Destroy() end
 
 local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "OrbVacuumUI"
+screenGui.Name = "FastVacuumUI"
 screenGui.Parent = CoreGui
 
 -- State
 local orbName = nil
+local targetFolder = nil
 local active = false
 local selecting = false
 
 -- UI Setup
 local mainFrame = Instance.new("Frame")
 mainFrame.Size = UDim2.new(0, 200, 0, 100)
-mainFrame.Position = UDim2.new(0.5, -100, 0.5, 100)
-mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+mainFrame.Position = UDim2.new(0.5, -100, 0.5, 120)
+mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
@@ -41,16 +42,28 @@ actionBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 actionBtn.Text = "SELECT ORB"
 actionBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 actionBtn.Font = Enum.Font.SourceSansBold
-actionBtn.TextSize = 20
+actionBtn.TextSize = 18
 actionBtn.Parent = mainFrame
 
--- Logic
+-- Logic to find where the orbs live
+local function FindOrbFolder(name)
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v.Name == name then
+            print("Found orbs in: " .. v.Parent:GetFullName())
+            return v.Parent
+        end
+    end
+    return Workspace
+end
+
 Mouse.Button1Down:Connect(function()
     if not selecting then return end
     local t = Mouse.Target
     if t then
         orbName = t.Name
         selecting = false
+        actionBtn.Text = "FINDING FOLDER..."
+        targetFolder = FindOrbFolder(orbName)
         actionBtn.Text = "VACUUM: OFF"
         actionBtn.BackgroundColor3 = Color3.fromRGB(100, 50, 0)
     end
@@ -67,8 +80,9 @@ actionBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+-- The fast loop
 RunService.Heartbeat:Connect(function()
-    if not active or not orbName then return end
+    if not active or not targetFolder or not orbName then return end
     
     local char = LocalPlayer.Character
     local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -76,14 +90,14 @@ RunService.Heartbeat:Connect(function()
     
     local targetPos = root.Position
     
-    for _, obj in pairs(Workspace:GetDescendants()) do
+    -- We only look in the targetFolder now. This is 100x faster.
+    for _, obj in pairs(targetFolder:GetChildren()) do
         if obj.Name == orbName and obj:IsA("BasePart") then
-            -- Force them into your center
             obj.CanCollide = false
             obj.Anchored = true
             obj.CFrame = CFrame.new(targetPos)
             
-            -- Optional: If the game requires a 'touch' event, this helps
+            -- Trigger touch
             if firetouchinterest then
                 firetouchinterest(root, obj, 0)
                 firetouchinterest(root, obj, 1)
